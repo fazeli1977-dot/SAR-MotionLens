@@ -43,6 +43,31 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+NASA_CSS = """
+<style>
+.stApp { background: radial-gradient(circle at 20% 0%, #0B1B3A 0%, #050B1A 55%, #02050D 100%); }
+h1 { letter-spacing: .5px; border-bottom: 3px solid #FC3D21; padding-bottom: .4rem; }
+h2, h3 { color: #FFFFFF; text-transform: uppercase; letter-spacing: 1px; font-size: 1.15rem !important; }
+[data-testid="stSidebar"] { background: #081330; border-right: 1px solid #0B3D91; }
+[data-testid="stMetric"] {
+  background: linear-gradient(145deg, #0B1B3A, #0A2552);
+  border: 1px solid #0B3D91; border-left: 4px solid #FC3D21;
+  border-radius: 6px; padding: .7rem .9rem;
+}
+[data-testid="stMetricLabel"] { text-transform: uppercase; letter-spacing: .8px; color: #9DB4D8; }
+button[kind="secondary"], .stDownloadButton button {
+  border: 1px solid #0B3D91; background: #0B3D91; color: #fff; border-radius: 4px;
+}
+button[kind="secondary"]:hover, .stDownloadButton button:hover { border-color: #FC3D21; color: #fff; }
+.dev-footer {
+  margin-top: 1rem; padding: 1.2rem 1.5rem; border-top: 3px solid #FC3D21;
+  background: #081330; font-size: 1.25rem; line-height: 1.9; color: #E8EEF8;
+}
+.dev-footer a { color: #5FA8FF; text-decoration: none; font-weight: 600; }
+</style>
+"""
+st.markdown(NASA_CSS, unsafe_allow_html=True)
+
 REGIME_RGB_MAP: dict[str, list[int]] = {
     "Subsidence_Aquifer": [239, 68, 68, 210],
     "Glacier_Creep": [56, 189, 248, 210],
@@ -556,9 +581,11 @@ def render_dashboard() -> None:
             )
 
     st.divider()
-    st.caption(
-        "Developer: Alireza Fazeli | Email: alirezafazeli@live.com | "
-        "GitHub: [fazeli1977-dot](https://github.com/fazeli1977-dot)"
+    st.markdown(
+        '<div class="dev-footer"><b>Developer:</b> Alireza Fazeli<br>'
+        '<b>Email:</b> <a href="mailto:alirezafazeli@live.com">alirezafazeli@live.com</a><br>'
+        '<b>GitHub:</b> <a href="https://github.com/fazeli1977-dot" target="_blank">fazeli1977-dot</a></div>',
+        unsafe_allow_html=True,
     )
 
 

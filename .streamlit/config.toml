@@ -7,8 +7,8 @@ runOnSave = true
 
 [theme]
 base = "dark"
-primaryColor = "#00E5FF"
-backgroundColor = "#070B19"
-secondaryBackgroundColor = "#111827"
-textColor = "#F3F4F6"
+primaryColor = "#FC3D21"
+backgroundColor = "#050B1A"
+secondaryBackgroundColor = "#0B1B3A"
+textColor = "#E8EEF8"
 font = "sans serif"

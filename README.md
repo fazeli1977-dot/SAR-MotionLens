@@ -1,63 +1,79 @@
-# SAR-MotionLens: Multi-Frequency InSAR & Polarimetric SAR Earth Surface Dynamics Lab
+<div align="center">
 
-[![NASA Space Apps Challenge 2026](https://img.shields.io/badge/NASA%20Space%20Apps-2026%20Challenge-0B3D91?style=for-the-badge&logo=nasa)](https://www.spaceappschallenge.org/)
+# SAR-MotionLens
+
+### Multi-Frequency InSAR & Polarimetric SAR Earth Surface Dynamics Lab
+
+*Through the Radar Looking Glass: Revealing Earth Processes with SAR*
+
+[![NASA Space Apps 2026](https://img.shields.io/badge/NASA%20Space%20Apps-2026-0B3D91?style=for-the-badge&logo=nasa)](https://www.spaceappschallenge.org/)
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
-[![Streamlit](https://img.shields.io/badge/Streamlit-Interactive%20Lab-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)](https://streamlit.io/)
-[![LightGBM](https://img.shields.io/badge/LightGBM-Regime%20Classifier-2E7D32?style=for-the-badge)](https://lightgbm.readthedocs.io/)
+[![Streamlit](https://img.shields.io/badge/Streamlit-Dashboard-FC3D21?style=for-the-badge&logo=streamlit&logoColor=white)](https://streamlit.io/)
+[![LightGBM](https://img.shields.io/badge/LightGBM-Classifier-2E7D32?style=for-the-badge)](https://lightgbm.readthedocs.io/)
 
-> **Challenge:** *Through the Radar Looking Glass: Revealing Earth Processes with SAR*
-> **Author:** Alireza Sani (azeli1977-dot)
+[**Run Locally**](#run-the-app) | [**Deploy on Streamlit Cloud**](https://share.streamlit.io/deploy?repository=fazeli1977-dot/SAR-MotionLens&branch=main&mainModule=app/streamlit_app.py) | [**Developer**](#developer)
 
----
-
-## 1. Executive Summary
-
-**SAR-MotionLens** is an interactive scientific laboratory and machine learning pipeline designed to reveal, quantify, and classify dynamic processes on Earth's surface using **Synthetic Aperture Radar (SAR)** across **X-Band, C-Band (Sentinel-1), and L-Band (NISAR / ALOS-4)** frequencies.
-
-1. **Aquifer Subsidence (quifer_subsidence):** Secular inelastic compaction driven by groundwater overdraft, combined with seasonal poroelastic oscillation.
-2. **Permafrost Thaw & Active Layer Breathing (permafrost_thaw):** High-amplitude seasonal frost heave and thaw settlement accompanied by gradual thermokarst subsidence.
-3. **Wetland & Floodplain Inundation (loodplain_inundation):** Specular water-surface scattering dips in VV backscatter, coherence loss, and rapid hydrological phase shifts.
-4. **Forest Canopy & Stable Bedrock (orest_canopy_stable):** High cross-polarized volume scattering (VH), elevated Radar Vegetation Index (RVI), and near-zero crustal deformation.
+</div>
 
 ---
 
-## 2. System Architecture
+## Overview
+
+SAR-MotionLens is an interactive lab that simulates, analyzes and classifies Earth-surface dynamics with **Synthetic Aperture Radar** across **X-, C- (Sentinel-1) and L-Band (NISAR / ALOS-4)**.
+
+Click anywhere on the world map, enter latitude/longitude, or pick a strategic preset. The platform then generates for that point:
+
+- an InSAR wrapped-phase interferogram and unwrapped LOS deformation map
+- a LOS displacement and PolSAR time series (backscatter, RVI, entropy, coherence)
+- a LightGBM regime classification with IsolationForest anomaly scoring
+- a subsidence risk class: **Stable**, **Moderate** or **Critical**
+- a downloadable point report in **GeoJSON** and **PDF**
+
+> Data are physically motivated **simulations** for demonstration; deformation rates near presets are illustrative, and the terrain model is a synthetic DEM proxy, not SRTM.
+
+## Earth-process regimes
+
+| Regime | Signature |
+| :--- | :--- |
+| `Subsidence_Aquifer` | Secular LOS compaction plus seasonal poroelastic cycle |
+| `Glacier_Creep` | Fast ice flow, summer coherence loss |
+| `Floodplain_Wetland` | Specular backscatter drops, rapid phase shifts |
+| `Crop_Phenology` | High cross-pol volume scattering, near-zero deformation |
+
+## Run the app
+
+```powershell
+git clone https://github.com/fazeli1977-dot/SAR-MotionLens.git
+cd SAR-MotionLens
+python -m venv .venv
+.\.venv\Scripts\python -m pip install -r requirements.txt
+.\.venv\Scripts\streamlit run app/streamlit_app.py
+```
+
+Then open **http://localhost:8501**. Run the tests with `.\.venv\Scripts\python -m pytest`.
+
+## Project structure
 
 ```
 SAR-MotionLens/
-|-- app/
-|   -- streamlit_app.py           # 4-Tab Interactive Mission Dashboard (PyDeck 3D + Plotly + Exports)
+|-- app/streamlit_app.py          # Dashboard (point selection, maps, charts, exports)
 |-- src/sar_motionlens/
-|   |-- __init__.py                # Package metadata
-|   |-- physics.py                 # DInSAR phase wrapping, coherence decorrelation, RVI, harmonic OLS
-|   |-- synthetic.py               # Multi-band spatiotemporal SAR cube & 2D interferogram generator
-|   -- ml_classifier.py           # Stratified 5-Fold LightGBM classifier + IsolationForest anomaly engine
-|-- tests/
-|   |-- test_physics.py            # Scientific unit tests for radar equations & bounds
-|   |-- test_ml.py                 # ML accuracy & anomaly detection verification
-|   -- test_app_smoke.py          # End-to-end pipeline & Parquet serialization smoke test
-|-- data/                          # Generated sample Parquet spatiotemporal cubes
--- pyproject.toml                 # Dependencies & pytest/ruff configuration
+|   |-- geo.py                    # Coordinate -> deformation profile, GeoJSON/PDF export
+|   |-- physics.py                # Phase wrapping, coherence, RVI, harmonic fit
+|   |-- synthetic.py              # Spatiotemporal cube and 2D interferogram generator
+|   `-- ml_classifier.py          # LightGBM classifier + IsolationForest
+|-- tests/                        # Unit and smoke tests
+`-- .streamlit/config.toml        # NASA-style dark theme
 ```
 
----
+## NASA Space Apps Earth Observation Suite
 
-## 3. Quickstart (Windows PowerShell)
-
-```powershell
-cd D:\NASA2026\SAR-MotionLens
-.\.venv\Scripts\python.exe -m pytest tests -v
-.\.venv\Scripts\streamlit.exe run app\streamlit_app.py
-```
-
----
-
-## 🛰️ NASA Space Apps Challenge — Earth Observation Suite by Alireza Sani
-
-Explore all three Earth Science & Remote Sensing platforms developed for the NASA Space Apps Challenge:
-
-| Project | Domain & Sensors | Live Repository |
+| Project | Domain | Repository |
 | :--- | :--- | :--- |
-| **1. SAR-MotionLens** | Synthetic Aperture Radar (Sentinel-1 / NISAR) InSAR Deformation, Flood & Landslide Intelligence | [github.com/fazeli1977-dot/SAR-MotionLens](https://github.com/fazeli1977-dot/SAR-MotionLens) |
-| **2. FireSync-MODIS-VIIRS** | Multi-Sensor Active Wildfire Detection, FRP Fusion & Smoke Plume Tracking (MODIS + VIIRS) | [github.com/fazeli1977-dot/FireSync-MODIS-VIIRS](https://github.com/fazeli1977-dot/FireSync-MODIS-VIIRS) |
-| **3. ClimateLens** | Global Climate Anomaly Analytics, Earth Observation Telemetry & Interactive Forecasting | [github.com/fazeli1977-dot/ClimateLens](https://github.com/fazeli1977-dot/ClimateLens) |
+| **SAR-MotionLens** (2026) | InSAR deformation and SAR regime classification | [fazeli1977-dot/SAR-MotionLens](https://github.com/fazeli1977-dot/SAR-MotionLens) |
+| **FireSync-MODIS-VIIRS** (2025) | Multi-sensor active wildfire detection and FRP fusion | [fazeli1977-dot/FireSync-MODIS-VIIRS](https://github.com/fazeli1977-dot/FireSync-MODIS-VIIRS) |
+| **ClimateLens** (2024) | Climate anomaly analytics and forecasting | [fazeli1977-dot/ClimateLens](https://github.com/fazeli1977-dot/ClimateLens) |
+
+## Developer
+
+**Alireza Fazeli** | [alirezafazeli@live.com](mailto:alirezafazeli@live.com) | [github.com/fazeli1977-dot](https://github.com/fazeli1977-dot)
