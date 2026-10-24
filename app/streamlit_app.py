@@ -6,6 +6,12 @@ Interactive Streamlit Mission Control Dashboard built for the NASA Space Apps Ch
 
 from __future__ import annotations
 import io
+import sys
+from pathlib import Path
+
+# Prefer the repo's src/ over any stale installed copy (e.g. cached Streamlit Cloud env).
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
