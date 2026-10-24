@@ -1,4 +1,4 @@
-<div align="center">
+﻿<div align="center">
 
 # SAR-MotionLens
 
@@ -75,6 +75,10 @@ SAR-MotionLens/
 | **SAR-MotionLens** (2026) | InSAR deformation and SAR regime classification | [fazeli1977-dot/SAR-MotionLens](https://github.com/fazeli1977-dot/SAR-MotionLens) |
 | **FireSync-MODIS-VIIRS** (2025) | Multi-sensor active wildfire detection and FRP fusion | [fazeli1977-dot/FireSync-MODIS-VIIRS](https://github.com/fazeli1977-dot/FireSync-MODIS-VIIRS) |
 | **ClimateLens** (2024) | Climate anomaly analytics and forecasting | [fazeli1977-dot/ClimateLens](https://github.com/fazeli1977-dot/ClimateLens) |
+
+## Super Intelligence (AI) Tool Disclosure
+
+This project was developed with the help of AI code-generation tools (GitHub Copilot, Claude). They were used for code, tests and documentation drafting; the developer reviewed and ran the results.
 
 ## Developer
 
