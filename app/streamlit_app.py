@@ -199,7 +199,7 @@ def render_dashboard() -> None:
         if st_folium is None:
             st.warning("Install `streamlit-folium` to enable click-to-select; use the sidebar coordinates meanwhile.")
         else:
-            fmap = folium.Map(location=[base_lat, base_lon], zoom_start=5, tiles="CartoDB dark_matter")
+            fmap = folium.Map(location=[base_lat, base_lon], zoom_start=5, tiles="OpenStreetMap")
             folium.Marker([base_lat, base_lon], tooltip=f"{base_lat:.4f}, {base_lon:.4f}").add_to(fmap)
             map_state = st_folium(fmap, height=320, use_container_width=True, returned_objects=["last_clicked"])
             clicked = (map_state or {}).get("last_clicked")
@@ -554,6 +554,12 @@ def render_dashboard() -> None:
                 file_name=f"sar_motionlens_sites_{band_name}.csv",
                 mime="text/csv",
             )
+
+    st.divider()
+    st.caption(
+        "Developer: Alireza Fazeli | Email: alirezafazeli@live.com | "
+        "GitHub: [fazeli1977-dot](https://github.com/fazeli1977-dot)"
+    )
 
 
 if __name__ == "__main__":
