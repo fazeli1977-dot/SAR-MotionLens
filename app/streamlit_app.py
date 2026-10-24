@@ -1,4 +1,4 @@
-"""SAR-MotionLens: Multi-Band InSAR & PolSAR Spatiotemporal Earth Dynamics Explorer.
+﻿"""SAR-MotionLens: Multi-Band InSAR & PolSAR Spatiotemporal Earth Dynamics Explorer.
 
 Interactive Streamlit Mission Control Dashboard built for the NASA Space Apps Challenge
 ("Through the Radar Looking Glass: Revealing Earth Processes with SAR").
@@ -177,17 +177,17 @@ def render_dashboard() -> None:
     with st.sidebar:
         st.subheader("Guided Scenarios")
         st.selectbox("Story Mode", [s["title"] for s in SCENARIOS], key="scenario_choice")
-        st.button("Load Scenario", on_click=_apply_scenario, use_container_width=True)
+        st.button("Load Scenario", on_click=_apply_scenario, width="stretch")
         st.divider()
         st.subheader("Global Study Point")
         st.selectbox("Strategic Preset", list(PRESETS.keys()), key="preset_choice")
-        st.button("Apply Preset", on_click=_apply_preset, use_container_width=True)
+        st.button("Apply Preset", on_click=_apply_preset, width="stretch")
         # Key embeds the point so inputs refresh after map clicks or presets.
         key_sfx = f"{base_lat:.4f}_{base_lon:.4f}"
         c_lat, c_lon = st.columns(2)
         in_lat = c_lat.number_input("Latitude", -85.0, 85.0, base_lat, 0.01, format="%.4f", key=f"lat_{key_sfx}")
         in_lon = c_lon.number_input("Longitude", -180.0, 180.0, base_lon, 0.01, format="%.4f", key=f"lon_{key_sfx}")
-        if st.button("Apply Coordinates", use_container_width=True):
+        if st.button("Apply Coordinates", width="stretch"):
             _set_point(in_lat, in_lon)
             st.rerun()
         st.caption(f"Selected: Lat {base_lat:.4f}, Lon {base_lon:.4f}. Or click the map in the first tab.")
@@ -300,7 +300,7 @@ def render_dashboard() -> None:
                      "Path": g.path_number, "Download (Earthdata login)": g.url}
                     for g in granules
                 ],
-                use_container_width=True,
+                width="stretch",
                 column_config={"Download (Earthdata login)": st.column_config.LinkColumn()},
             )
         st.caption(
@@ -328,7 +328,7 @@ def render_dashboard() -> None:
                     {"Metric": "Nearest feature", "Selected point": profile.nearest_feature, other_name: other.nearest_feature},
                     {"Metric": "Terrain (m / slope deg)", "Selected point": f"{profile.elevation_m:.0f} / {profile.slope_deg:.1f}", other_name: f"{other.elevation_m:.0f} / {other.slope_deg:.1f}"},
                 ],
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
             )
 
@@ -434,7 +434,7 @@ def render_dashboard() -> None:
                 margin=dict(l=20, r=20, t=40, b=20),
                 template="plotly_dark",
             )
-            st.plotly_chart(fig_insar, use_container_width=True)
+            st.plotly_chart(fig_insar, width="stretch")
             st.info(
                 f"**Physical Insight ({band_name}):** Each full color cycle ($2\\pi$ radians) corresponds to "
                 f"**{band_spec.wavelength_m * 500:.2f} mm** of Line-of-Sight motion ($\\lambda/2$). "
@@ -449,7 +449,7 @@ def render_dashboard() -> None:
                      "Fringes": round(fringes_for_displacement(shown_mm, spec.wavelength_m), 1)}
                     for name, spec in RADAR_BANDS.items()
                 ],
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
             )
 
@@ -589,7 +589,7 @@ def render_dashboard() -> None:
 
         fig_ts.update_xaxes(title_text="Day of Year (DOY)")
         fig_ts.update_layout(height=620, template="plotly_dark", margin=dict(l=25, r=25, t=45, b=25))
-        st.plotly_chart(fig_ts, use_container_width=True)
+        st.plotly_chart(fig_ts, width="stretch")
 
     with tab_ml:
         st.subheader("LightGBM Physical Feature Importance & Multi-Regime Confusion Matrix")
@@ -613,7 +613,7 @@ def render_dashboard() -> None:
                 template="plotly_dark",
                 margin=dict(l=20, r=20, t=45, b=20),
             )
-            st.plotly_chart(fig_fi, use_container_width=True)
+            st.plotly_chart(fig_fi, width="stretch")
 
         with ml_col2:
             fig_cm = px.imshow(
@@ -626,7 +626,7 @@ def render_dashboard() -> None:
                 labels=dict(x="Predicted SAR Regime", y="True Ground Regime", color="Sites"),
             )
             fig_cm.update_layout(height=440, template="plotly_dark", margin=dict(l=20, r=20, t=45, b=20))
-            st.plotly_chart(fig_cm, use_container_width=True)
+            st.plotly_chart(fig_cm, width="stretch")
 
         st.subheader("🚨 Priority Geophysical Hazard & Anomaly Watchlist")
         top_hazards = (
@@ -645,7 +645,7 @@ def render_dashboard() -> None:
             ])
             .head(25)
         )
-        st.dataframe(top_hazards.to_pandas(), use_container_width=True)
+        st.dataframe(top_hazards.to_pandas(), width="stretch")
 
         report_extra = {
             "band": band_name,
