@@ -22,6 +22,7 @@ from sar_motionlens.geo import (
     build_pdf_report,
 )
 from sar_motionlens.ml_classifier import train_and_evaluate_sar_classifier
+from sar_motionlens.nisar import NisarGranule, search_nisar
 from sar_motionlens.physics import RADAR_BANDS
 from sar_motionlens.synthetic import (
     REGIME_CLASSES,
@@ -98,6 +99,11 @@ def load_mission_cube_and_ml(
     )
     eval_res = train_and_evaluate_sar_classifier(site_df, seed=seed)
     return ts_df, eval_res
+
+
+@st.cache_data(show_spinner=False, ttl=3600)
+def cached_nisar_search(lat: float, lon: float) -> list[NisarGranule]:
+    return search_nisar(lat, lon)
 
 
 @st.cache_data(show_spinner=False)
@@ -220,11 +226,25 @@ def render_dashboard() -> None:
     ])
 
     with tab_map:
+        try:
+            with st.spinner("Querying NASA/ASF DAAC for real NISAR granules..."):
+                granules = cached_nisar_search(round(base_lat, 3), round(base_lon, 3))
+            nisar_error = None
+        except Exception as exc:  # network/API failure must not break the dashboard
+            granules, nisar_error = [], str(exc)
+
         st.subheader("Point Selection: click anywhere on the globe")
         if st_folium is None:
             st.warning("Install `streamlit-folium` to enable click-to-select; use the sidebar coordinates meanwhile.")
         else:
             fmap = folium.Map(location=[base_lat, base_lon], zoom_start=5, tiles="OpenStreetMap")
+            for g in granules[:10]:
+                if g.footprint:
+                    folium.Polygon(
+                        [(y, x) for x, y in g.footprint],
+                        color="#FC3D21", weight=1, fill=True, fill_opacity=0.05,
+                        tooltip=f"NISAR {g.level} | {g.start_time[:10]}",
+                    ).add_to(fmap)
             folium.Marker([base_lat, base_lon], tooltip=f"{base_lat:.4f}, {base_lon:.4f}").add_to(fmap)
             map_state = st_folium(fmap, height=320, use_container_width=True, returned_objects=["last_clicked"])
             clicked = (map_state or {}).get("last_clicked")
@@ -233,6 +253,33 @@ def render_dashboard() -> None:
                 _set_point(clicked["lat"], clicked["lng"])
                 st.rerun()
 
+        st.subheader("Real NISAR Data at This Point (NASA ASF DAAC)")
+        if nisar_error:
+            st.warning(f"NISAR catalog unavailable right now: {nisar_error}")
+        elif not granules:
+            st.info("No NISAR granules found at this point yet (mission coverage is still expanding).")
+        else:
+            levels = sorted({g.level for g in granules})
+            n1, n2, n3 = st.columns(3)
+            n1.metric("Granules Found", len(granules), ", ".join(levels))
+            n2.metric("Latest Acquisition", max(g.start_time for g in granules)[:10])
+            n3.metric("Orbit", granules[0].flight_direction.title(), f"Path {granules[0].path_number}")
+            st.dataframe(
+                [
+                    {"Product": g.level, "Start (UTC)": g.start_time, "Direction": g.flight_direction,
+                     "Path": g.path_number, "Download (Earthdata login)": g.url}
+                    for g in granules
+                ],
+                use_container_width=True,
+                column_config={"Download (Earthdata login)": st.column_config.LinkColumn()},
+            )
+        st.caption(
+            "Granule metadata above is **real NISAR data**. The deformation, interferogram, time-series "
+            "and ML results below are a **physically motivated simulation** for the selected point; "
+            "NISAR HDF5 products (e.g. GUNW) can be downloaded with a free NASA Earthdata account."
+        )
+
+        st.subheader("Simulated Deformation Analysis (Demonstration)")
         p1, p2, p3, p4 = st.columns(4)
         p1.metric("Nearest Feature", profile.nearest_feature, f"{profile.nearest_km:.0f} km")
         p2.metric("Displacement Rate", f"{-profile.rate_mm_yr:.1f} mm/yr", profile.nearest_kind)

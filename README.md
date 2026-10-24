@@ -28,8 +28,9 @@ Click anywhere on the world map, enter latitude/longitude, or pick a strategic p
 - a LightGBM regime classification with IsolationForest anomaly scoring
 - a subsidence risk class: **Stable**, **Moderate** or **Critical**
 - a downloadable point report in **GeoJSON** and **PDF**
+- real **NISAR granule coverage** (L2 GUNW, L3 and others) over the selected point, with footprints on the map
 
-> Data are physically motivated **simulations** for demonstration; deformation rates near presets are illustrative, and the terrain model is a synthetic DEM proxy, not SRTM.
+> **Data transparency:** the *NISAR Data* panel shows **real** NISAR granule metadata (products, dates, orbit, footprints, download links) queried live from the public [ASF DAAC Search API](https://docs.asf.alaska.edu/api/basics/). The deformation, interferogram, time-series and ML results are a **physically motivated simulation** for the selected point; the terrain model is a synthetic DEM proxy, not SRTM. Downloading the NISAR HDF5 products requires a free [NASA Earthdata](https://urs.earthdata.nasa.gov/) account.
 
 ## Earth-process regimes
 
@@ -59,6 +60,7 @@ SAR-MotionLens/
 |-- app/streamlit_app.py          # Dashboard (point selection, maps, charts, exports)
 |-- src/sar_motionlens/
 |   |-- geo.py                    # Coordinate -> deformation profile, GeoJSON/PDF export
+|   |-- nisar.py                  # Real NISAR granule search (ASF DAAC API)
 |   |-- physics.py                # Phase wrapping, coherence, RVI, harmonic fit
 |   |-- synthetic.py              # Spatiotemporal cube and 2D interferogram generator
 |   `-- ml_classifier.py          # LightGBM classifier + IsolationForest
