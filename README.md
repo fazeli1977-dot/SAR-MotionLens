@@ -1,5 +1,7 @@
 ﻿<div align="center">
 
+<img src="assets/hero.jpg" alt="SAR-MotionLens banner" width="100%">
+
 # SAR-MotionLens
 
 ### Multi-Frequency InSAR & Polarimetric SAR Earth Surface Dynamics Lab

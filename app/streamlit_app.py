@@ -5,6 +5,7 @@ Interactive Streamlit Mission Control Dashboard built for the NASA Space Apps Ch
 """
 
 from __future__ import annotations
+import base64
 import io
 import sys
 from pathlib import Path
@@ -60,7 +61,34 @@ st.set_page_config(
 NASA_CSS = """
 <style>
 .stApp { background: radial-gradient(circle at 20% 0%, #0B1B3A 0%, #050B1A 55%, #02050D 100%); }
-h1 { letter-spacing: .5px; border-bottom: 3px solid #FC3D21; padding-bottom: .4rem; }
+.block-container { padding-top: 1.2rem; max-width: 1500px; }
+header[data-testid="stHeader"] { background: transparent; }
+html, body, .stApp { font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; }
+.hero {
+  position: relative; overflow: hidden; border-radius: 10px; margin-bottom: 1.2rem;
+  min-height: 300px; padding: 2.6rem 2.8rem; border: 1px solid #0B3D91;
+  box-shadow: 0 10px 40px rgba(11, 61, 145, .35);
+  background-color: #050B1A; background-size: cover; background-position: center;
+}
+.hero::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(90deg, rgba(3,8,22,.92) 0%, rgba(3,8,22,.55) 55%, rgba(3,8,22,0) 100%);
+}
+.hero > * { position: relative; z-index: 1; }
+.hero .eyebrow { color: #FC3D21; font-weight: 700; letter-spacing: 3px; font-size: .85rem; text-transform: uppercase; }
+.hero h1 { font-size: 3rem; line-height: 1.1; margin: .5rem 0 .6rem 0; color: #fff; border: 0; padding: 0; max-width: 780px; }
+.hero h1 span { color: #5FA8FF; }
+.hero p { color: #C9D8F0; font-size: 1.08rem; max-width: 760px; margin-bottom: 1.1rem; }
+.hero .chips span {
+  display: inline-block; margin: 0 .5rem .4rem 0; padding: .25rem .8rem; border-radius: 999px;
+  border: 1px solid #2F6FD6; background: rgba(11, 61, 145, .45); color: #E8EEF8; font-size: .82rem; letter-spacing: .5px;
+}
+.stTabs [data-baseweb="tab-list"] { gap: 6px; border-bottom: 1px solid #0B3D91; }
+.stTabs [data-baseweb="tab"] { background: #0B1B3A; border-radius: 6px 6px 0 0; padding: .6rem 1.1rem; }
+.stTabs [aria-selected="true"] { background: #0B3D91; border-bottom: 3px solid #FC3D21; }
+[data-testid="stMetric"]:hover { border-color: #5FA8FF; transform: translateY(-2px); transition: all .2s ease; }
+[data-testid="stExpander"], [data-testid="stDataFrame"] { border: 1px solid #0B3D91; border-radius: 6px; }
+[data-testid="stAlert"] { border-radius: 6px; border-left: 4px solid #5FA8FF; }
 h2, h3 { color: #FFFFFF; text-transform: uppercase; letter-spacing: 1px; font-size: 1.15rem !important; }
 [data-testid="stSidebar"] { background: #081330; border-right: 1px solid #0B3D91; }
 [data-testid="stMetric"] {
@@ -146,6 +174,14 @@ def _set_point(lat: float, lon: float) -> None:
     }
 
 
+@st.cache_resource(show_spinner=False)
+def _hero_data_uri() -> str:
+    path = Path(__file__).resolve().parents[1] / "assets" / "hero.jpg"
+    if not path.exists():
+        return ""
+    return "data:image/jpeg;base64," + base64.b64encode(path.read_bytes()).decode()
+
+
 def _apply_preset() -> None:
     _set_point(*PRESETS[st.session_state.preset_choice])
 
@@ -160,12 +196,20 @@ def _apply_scenario() -> None:
 
 def render_dashboard() -> None:
     """Main entry point for the SAR-MotionLens Streamlit application."""
-    st.title("🛰️ SAR-MotionLens: Multi-Band InSAR & PolSAR Earth Dynamics Intelligence")
+    hero_img = _hero_data_uri()
+    hero_bg = f"background-image:url('{hero_img}');" if hero_img else ""
     st.markdown(
-        "**Through the Radar Looking Glass: Revealing Earth Processes with SAR** — "
-        "Fusing **Sentinel-1 (C-Band)** and **NISAR (L/S-Band)** Interferometric Phase ($\\Delta\\phi$) "
-        "and Dual-Polarization Backscatter ($\\sigma^0_{VV}, \\sigma^0_{VH}$, RVI, Entropy $H$) with "
-        "**LightGBM** & **IsolationForest** to classify and monitor critical Earth hazards day and night."
+        f"""
+<div class="hero" style="{hero_bg}">
+  <div class="eyebrow">NASA Space Apps 2026 &middot; Dancing with the SARs</div>
+  <h1>SAR-<span>MotionLens</span><br>Earth Dynamics Intelligence</h1>
+  <p>Through the Radar Looking Glass: pick any point on Earth and explore how SAR interferometry reveals
+  subsidence, fault creep, volcanic and glacier motion, day and night, through clouds.</p>
+  <div class="chips"><span>NISAR L/S-Band</span><span>Sentinel-1 C-Band</span><span>InSAR &amp; PolSAR</span>
+  <span>LightGBM &amp; IsolationForest</span><span>Global click-to-analyze</span></div>
+</div>
+""",
+        unsafe_allow_html=True,
     )
 
     if "selected_point" not in st.session_state:
