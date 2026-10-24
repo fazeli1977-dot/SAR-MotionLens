@@ -76,4 +76,4 @@ SAR-MotionLens/
 
 ## Developer
 
-**Alireza Fazeli** | [alirezafazeli@live.com](mailto:alirezafazeli@live.com) | [github.com/fazeli1977-dot](https://github.com/fazeli1977-dot)
+**Alireza Sani** | [alirezafazeli@live.com](mailto:alirezafazeli@live.com) | [github.com/fazeli1977-dot](https://github.com/fazeli1977-dot)

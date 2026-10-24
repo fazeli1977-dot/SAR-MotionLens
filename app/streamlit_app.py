@@ -582,7 +582,7 @@ def render_dashboard() -> None:
 
     st.divider()
     st.markdown(
-        '<div class="dev-footer"><b>Developer:</b> Alireza Fazeli<br>'
+        '<div class="dev-footer"><b>Developer:</b> Alireza Sani<br>'
         '<b>Email:</b> <a href="mailto:alirezafazeli@live.com">alirezafazeli@live.com</a><br>'
         '<b>GitHub:</b> <a href="https://github.com/fazeli1977-dot" target="_blank">fazeli1977-dot</a></div>',
         unsafe_allow_html=True,
