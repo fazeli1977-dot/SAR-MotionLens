@@ -9,13 +9,12 @@ import io
 import sys
 from pathlib import Path
 
-# Prefer the repo's src/ over any stale installed copy (e.g. cached Streamlit Cloud env).
+# Streamlit only watches the main script, so edited modules under src/ can stay stale in memory
+# after a redeploy; always re-import them from the repo.
 _SRC = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(_SRC))
-_loaded = sys.modules.get("sar_motionlens")
-if _loaded is not None and not str(Path(_loaded.__file__ or "").resolve()).startswith(str(_SRC)):
-    for _name in [n for n in sys.modules if n == "sar_motionlens" or n.startswith("sar_motionlens.")]:
-        del sys.modules[_name]
+for _name in [n for n in sys.modules if n == "sar_motionlens" or n.startswith("sar_motionlens.")]:
+    del sys.modules[_name]
 
 import numpy as np
 import plotly.express as px
