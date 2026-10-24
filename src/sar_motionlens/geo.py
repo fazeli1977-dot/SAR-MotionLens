@@ -1,4 +1,4 @@
-"""Location-driven deformation context: turns any (lat, lon) into simulation parameters.
+﻿"""Location-driven deformation context: turns any (lat, lon) into simulation parameters.
 
 The terrain model is a deterministic synthetic DEM proxy (not real SRTM); hotspot rates are
 illustrative values for demonstration, not measured velocities.
@@ -113,6 +113,67 @@ def analyze_location(lat: float, lon: float) -> LocationProfile:
         seed_offset=int(zlib.crc32(f"{lat:.2f},{lon:.2f}".encode()) % 10_000),
         risk_class=classify_risk(rate),
     )
+
+
+SCENARIOS: list[dict[str, str]] = [
+    {
+        "title": "Sinking Capital: Tehran Plain",
+        "preset": "Tehran-Shahriar Plain (Iran)",
+        "band": "L-Band (NISAR 24cm)",
+        "story": "Decades of groundwater pumping compact the aquifer beneath the Tehran-Shahriar plain. "
+        "The ground slowly settles, and radar sees it as a bowl of concentric fringes.",
+    },
+    {
+        "title": "A Fault That Creeps: San Andreas",
+        "preset": "San Andreas Fault (California, USA)",
+        "band": "C-Band (Sentinel-1 5.6cm)",
+        "story": "Along the creeping section of the San Andreas, the two sides of the fault slide past each other. "
+        "In an interferogram this appears as a sharp phase step across the fault trace.",
+    },
+    {
+        "title": "Sinking City: Mexico City",
+        "preset": "Mexico City Basin (Mexico)",
+        "band": "L-Band (NISAR 24cm)",
+        "story": "Mexico City sits on an ancient lake bed. Heavy water extraction makes it one of the fastest "
+        "subsiding major cities on Earth.",
+    },
+    {
+        "title": "A Breathing Volcano: Mount Etna",
+        "preset": "Mount Etna (Sicily, Italy)",
+        "band": "S-Band (NISAR 9.4cm)",
+        "story": "Magma moving beneath Etna inflates and deflates the volcano. SAR measures these millimetre-scale "
+        "changes from orbit, day and night, through clouds.",
+    },
+    {
+        "title": "Ice on the Move: Jakobshavn Glacier",
+        "preset": "Jakobshavn Glacier (Greenland)",
+        "band": "L-Band (NISAR 24cm)",
+        "story": "Jakobshavn is one of the fastest flowing glaciers. Long-wavelength L-band keeps coherence "
+        "over moving ice where shorter wavelengths decorrelate.",
+    },
+]
+
+
+def explain_risk(profile: LocationProfile) -> str:
+    """One-sentence plain-language reason for the point's risk class."""
+    kind_text = {
+        "aquifer": "an aquifer-compaction zone",
+        "fault": "an active fault",
+        "volcano": "a volcanic edifice",
+        "delta": "a subsiding delta or coastal plain",
+        "glacier": "a fast-flowing glacier",
+        "background": "open terrain with no mapped deformation source nearby",
+    }[profile.nearest_kind]
+    terrain = "flat, low-lying terrain that compacts easily" if profile.slope_deg < 1.0 else "sloped terrain"
+    return (
+        f"Classified {profile.risk_class}: simulated LOS rate of {profile.rate_mm_yr:.0f} mm/yr, "
+        f"{profile.nearest_km:.0f} km from {profile.nearest_feature} ({kind_text}), on {terrain}."
+    )
+
+
+def fringes_for_displacement(displacement_mm: float, wavelength_m: float) -> float:
+    """Number of full 2*pi fringes produced by a LOS displacement (lambda/2 per fringe)."""
+    return abs(displacement_mm) / (wavelength_m * 500.0)
 
 
 def build_geojson(profile: LocationProfile, extra: dict | None = None) -> str:

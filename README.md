@@ -28,6 +28,7 @@ Click anywhere on the world map, enter latitude/longitude, or pick a strategic p
 - a LightGBM regime classification with IsolationForest anomaly scoring
 - a subsidence risk class: **Stable**, **Moderate** or **Critical**
 - a downloadable point report in **GeoJSON** and **PDF**
+- **Story Mode** guided scenarios, a plain-language risk explanation, an observation-span slider, fringe counts per band (C/S/L), a two-location comparison and a fit uncertainty band
 - real **NISAR granule coverage** (L2 GUNW, L3 and others) over the selected point, with footprints on the map
 
 > **Data transparency:** the *NISAR Data* panel shows **real** NISAR granule metadata (products, dates, orbit, footprints, download links) queried live from the public [ASF DAAC Search API](https://docs.asf.alaska.edu/api/basics/). The deformation, interferogram, time-series and ML results are a **physically motivated simulation** for the selected point; the terrain model is a synthetic DEM proxy, not SRTM. Downloading the NISAR HDF5 products requires a free [NASA Earthdata](https://urs.earthdata.nasa.gov/) account.

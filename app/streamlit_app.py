@@ -16,10 +16,13 @@ import streamlit as st
 
 from sar_motionlens.geo import (
     PRESETS,
+    SCENARIOS,
     LocationProfile,
     analyze_location,
     build_geojson,
     build_pdf_report,
+    explain_risk,
+    fringes_for_displacement,
 )
 from sar_motionlens.ml_classifier import train_and_evaluate_sar_classifier
 from sar_motionlens.nisar import NisarGranule, search_nisar
@@ -113,11 +116,12 @@ def cached_location_profile(lat: float, lon: float) -> LocationProfile:
 
 @st.cache_data(show_spinner=False)
 def cached_interferogram(
-    peak_mm: float, wavelength_m: float, seed: int, angle_deg: float, fault_creep: bool
+    peak_mm: float, wavelength_m: float, seed: int, angle_deg: float, fault_creep: bool, time_years: float = 1.0
 ) -> dict[str, np.ndarray]:
     return generate_2d_interferogram_grid(
         grid_size=110,
         peak_subsidence_mm=peak_mm,
+        time_years=time_years,
         wavelength_m=wavelength_m,
         seed=seed,
         bowl_angle_deg=angle_deg,
@@ -134,6 +138,14 @@ def _set_point(lat: float, lon: float) -> None:
 
 def _apply_preset() -> None:
     _set_point(*PRESETS[st.session_state.preset_choice])
+
+
+def _apply_scenario() -> None:
+    sc = next(s for s in SCENARIOS if s["title"] == st.session_state.scenario_choice)
+    st.session_state.preset_choice = sc["preset"]
+    st.session_state.band_choice = sc["band"]
+    st.session_state.active_story = sc["story"]
+    _set_point(*PRESETS[sc["preset"]])
 
 
 def render_dashboard() -> None:
@@ -153,6 +165,10 @@ def render_dashboard() -> None:
     profile = cached_location_profile(round(base_lat, 4), round(base_lon, 4))
 
     with st.sidebar:
+        st.subheader("Guided Scenarios")
+        st.selectbox("Story Mode", [s["title"] for s in SCENARIOS], key="scenario_choice")
+        st.button("Load Scenario", on_click=_apply_scenario, use_container_width=True)
+        st.divider()
         st.subheader("Global Study Point")
         st.selectbox("Strategic Preset", list(PRESETS.keys()), key="preset_choice")
         st.button("Apply Preset", on_click=_apply_preset, use_container_width=True)
@@ -171,6 +187,7 @@ def render_dashboard() -> None:
             "Select SAR Sensor Band",
             options=list(RADAR_BANDS.keys()),
             index=0,
+            key="band_choice",
             format_func=lambda k: f"{k} — {RADAR_BANDS[k].mission} (λ={RADAR_BANDS[k].wavelength_m*100:.2f} cm)",
         )
         band_spec = RADAR_BANDS[band_name]
@@ -197,6 +214,7 @@ def render_dashboard() -> None:
             step=5.0,
             key=f"peak_{key_sfx}",
         )
+        obs_years = st.slider("Observation Span (years)", 0.25, 2.0, 1.0, 0.25)
 
     ts_df, eval_res = load_mission_cube_and_ml(
         n_sites_per_regime=n_sites_per_regime,
@@ -226,6 +244,8 @@ def render_dashboard() -> None:
     ])
 
     with tab_map:
+        if st.session_state.get("active_story"):
+            st.info(f"**Story:** {st.session_state.active_story}")
         try:
             with st.spinner("Querying NASA/ASF DAAC for real NISAR granules..."):
                 granules = cached_nisar_search(round(base_lat, 3), round(base_lon, 3))
@@ -285,6 +305,22 @@ def render_dashboard() -> None:
         p2.metric("Displacement Rate", f"{-profile.rate_mm_yr:.1f} mm/yr", profile.nearest_kind)
         p3.metric("Terrain (synthetic DEM)", f"{profile.elevation_m:.0f} m", f"slope {profile.slope_deg:.1f} deg")
         p4.metric("Subsidence Risk", profile.risk_class, f"ML mean risk {mean_ml_risk:.1f}/100")
+        st.caption(explain_risk(profile))
+
+        with st.expander("Compare with a second location"):
+            other_name = st.selectbox("Second location", list(PRESETS.keys()), key="compare_choice")
+            other = cached_location_profile(*[round(v, 4) for v in PRESETS[other_name]])
+            st.dataframe(
+                [
+                    {"Metric": "Location", "Selected point": f"{base_lat:.3f}, {base_lon:.3f}", other_name: "preset"},
+                    {"Metric": "Displacement rate (mm/yr)", "Selected point": f"{-profile.rate_mm_yr:.1f}", other_name: f"{-other.rate_mm_yr:.1f}"},
+                    {"Metric": "Risk class", "Selected point": profile.risk_class, other_name: other.risk_class},
+                    {"Metric": "Nearest feature", "Selected point": profile.nearest_feature, other_name: other.nearest_feature},
+                    {"Metric": "Terrain (m / slope deg)", "Selected point": f"{profile.elevation_m:.0f} / {profile.slope_deg:.1f}", other_name: f"{other.elevation_m:.0f} / {other.slope_deg:.1f}"},
+                ],
+                use_container_width=True,
+                hide_index=True,
+            )
 
         left_col, right_col = st.columns([1.15, 1.0])
 
@@ -351,6 +387,7 @@ def render_dashboard() -> None:
                 (int(seed) + profile.seed_offset) % 1_000_000,
                 profile.bowl_angle_deg,
                 profile.fault_creep,
+                float(obs_years),
             )
 
             fig_insar = make_subplots(
@@ -394,6 +431,17 @@ def render_dashboard() -> None:
                 "Switch between **C-Band** and **L-Band** in the sidebar to see how shorter wavelengths produce "
                 "denser interferometric fringes for the exact same ground deformation!"
             )
+            shown_mm = float(peak_deform_mm) * float(obs_years)
+            st.caption(f"Peak LOS motion over {obs_years:g} yr: {shown_mm:.0f} mm. Fringes this produces per band:")
+            st.dataframe(
+                [
+                    {"Band": name, "Wavelength (cm)": round(spec.wavelength_m * 100, 2),
+                     "Fringes": round(fringes_for_displacement(shown_mm, spec.wavelength_m), 1)}
+                    for name, spec in RADAR_BANDS.items()
+                ],
+                use_container_width=True,
+                hide_index=True,
+            )
 
     with tab_ts:
         st.subheader("Multi-Parameter SAR Time-Series Inspector (InSAR Kinematics + PolSAR Scattering)")
@@ -420,6 +468,7 @@ def render_dashboard() -> None:
         design = np.column_stack([np.ones_like(t_yr), t_yr, np.sin(omega * t_yr), np.cos(omega * t_yr)])
         coeffs, _, _, _ = np.linalg.lstsq(design, site_ts["los_displacement_mm"].to_numpy(), rcond=None)
         fitted_los = design @ coeffs
+        resid_sigma = float(np.std(site_ts["los_displacement_mm"].to_numpy() - fitted_los))
 
         fig_ts = make_subplots(
             rows=2,
@@ -441,6 +490,19 @@ def render_dashboard() -> None:
                 mode="markers+lines",
                 name="Observed LOS (mm)",
                 line=dict(color="#38BDF8", width=1.5),
+            ),
+            row=1,
+            col=1,
+        )
+        fig_ts.add_trace(
+            go.Scatter(
+                x=np.concatenate([days, days[::-1]]),
+                y=np.concatenate([fitted_los + resid_sigma, (fitted_los - resid_sigma)[::-1]]).tolist(),
+                fill="toself",
+                fillcolor="rgba(244,63,94,0.15)",
+                line=dict(width=0),
+                name="Fit ±1σ uncertainty",
+                hoverinfo="skip",
             ),
             row=1,
             col=1,
