@@ -14,6 +14,13 @@ import polars as pl
 import pydeck as pdk
 import streamlit as st
 
+from sar_motionlens.geo import (
+    PRESETS,
+    LocationProfile,
+    analyze_location,
+    build_geojson,
+    build_pdf_report,
+)
 from sar_motionlens.ml_classifier import train_and_evaluate_sar_classifier
 from sar_motionlens.physics import RADAR_BANDS
 from sar_motionlens.synthetic import (
@@ -21,6 +28,13 @@ from sar_motionlens.synthetic import (
     generate_2d_interferogram_grid,
     generate_sar_spatiotemporal_cube,
 )
+
+try:
+    import folium
+    from streamlit_folium import st_folium
+except ImportError:  # optional dependency
+    folium = None
+    st_folium = None
 
 st.set_page_config(
     page_title="SAR-MotionLens | NASA SAR Earth Explorer",
@@ -45,6 +59,7 @@ def load_mission_cube_and_ml(
     seed: int,
     base_lat: float = 35.68,
     base_lon: float = 51.42,
+    deformation_scale: float = 1.0,
 ):
     """Cached generator and LightGBM trainer for rapid interactive exploration."""
     ts_df, site_df = generate_sar_spatiotemporal_cube(
@@ -54,9 +69,40 @@ def load_mission_cube_and_ml(
         seed=seed,
         base_lat=base_lat,
         base_lon=base_lon,
+        deformation_scale=deformation_scale,
     )
     eval_res = train_and_evaluate_sar_classifier(site_df, seed=seed)
     return ts_df, eval_res
+
+
+@st.cache_data(show_spinner=False)
+def cached_location_profile(lat: float, lon: float) -> LocationProfile:
+    return analyze_location(lat, lon)
+
+
+@st.cache_data(show_spinner=False)
+def cached_interferogram(
+    peak_mm: float, wavelength_m: float, seed: int, angle_deg: float, fault_creep: bool
+) -> dict[str, np.ndarray]:
+    return generate_2d_interferogram_grid(
+        grid_size=110,
+        peak_subsidence_mm=peak_mm,
+        wavelength_m=wavelength_m,
+        seed=seed,
+        bowl_angle_deg=angle_deg,
+        fault_creep=fault_creep,
+    )
+
+
+def _set_point(lat: float, lon: float) -> None:
+    st.session_state.selected_point = {
+        "lat": float(np.clip(lat, -85.0, 85.0)),
+        "lon": float(((lon + 180.0) % 360.0) - 180.0),
+    }
+
+
+def _apply_preset() -> None:
+    _set_point(*PRESETS[st.session_state.preset_choice])
 
 
 def render_dashboard() -> None:
@@ -69,25 +115,25 @@ def render_dashboard() -> None:
         "**LightGBM** & **IsolationForest** to classify and monitor critical Earth hazards day and night."
     )
 
+    if "selected_point" not in st.session_state:
+        st.session_state.selected_point = {"lat": 35.6892, "lon": 51.3890}
+    point = st.session_state.selected_point
+    base_lat, base_lon = point["lat"], point["lon"]
+    profile = cached_location_profile(round(base_lat, 4), round(base_lon, 4))
+
     with st.sidebar:
-        st.subheader("Global Study Region")
-        REGIONS = {
-            "San Andreas & Central Valley (California, USA)": (36.60, -119.85),
-            "Jakobshavn Glacier (Greenland)": (69.16, -49.83),
-            "Mount Etna Volcano (Sicily, Italy)": (37.75, 14.99),
-            "Mekong Delta Floodplain (Vietnam)": (10.03, 105.78),
-            "Tokyo Bay & Kanto Plain (Japan)": (35.68, 139.76),
-            "Tehran Plain & Alborz (Iran)": (35.68, 51.42),
-            "Custom Coordinates (Enter Lat/Lon)": None,
-        }
-        selected_region = st.selectbox("Target Geospatial Hotspot", list(REGIONS.keys()), index=0)
-        if REGIONS[selected_region] is None:
-            c_lat, c_lon = st.columns(2)
-            base_lat = c_lat.number_input("Latitude", -85.0, 85.0, 36.60, 0.1)
-            base_lon = c_lon.number_input("Longitude", -180.0, 180.0, -119.85, 0.1)
-        else:
-            base_lat, base_lon = REGIONS[selected_region]
-            st.caption(f"Center: Lat {base_lat:.2f} deg, Lon {base_lon:.2f} deg")
+        st.subheader("Global Study Point")
+        st.selectbox("Strategic Preset", list(PRESETS.keys()), key="preset_choice")
+        st.button("Apply Preset", on_click=_apply_preset, use_container_width=True)
+        # Key embeds the point so inputs refresh after map clicks or presets.
+        key_sfx = f"{base_lat:.4f}_{base_lon:.4f}"
+        c_lat, c_lon = st.columns(2)
+        in_lat = c_lat.number_input("Latitude", -85.0, 85.0, base_lat, 0.01, format="%.4f", key=f"lat_{key_sfx}")
+        in_lon = c_lon.number_input("Longitude", -180.0, 180.0, base_lon, 0.01, format="%.4f", key=f"lon_{key_sfx}")
+        if st.button("Apply Coordinates", use_container_width=True):
+            _set_point(in_lat, in_lon)
+            st.rerun()
+        st.caption(f"Selected: Lat {base_lat:.4f}, Lon {base_lon:.4f}. Or click the map in the first tab.")
         st.divider()
         st.header("🎛️ SAR Sensor & Mission Controls")
         band_name = st.selectbox(
@@ -113,18 +159,25 @@ def render_dashboard() -> None:
         st.divider()
         st.subheader("🌐 2D Interferogram Simulator")
         peak_deform_mm = st.slider(
-            "Peak Deformation Bowl (mm)", min_value=-180.0, max_value=-10.0, value=-75.0, step=5.0
+            "Peak Deformation Bowl (mm)",
+            min_value=-180.0,
+            max_value=-10.0,
+            value=float(np.clip(round(profile.peak_deform_mm / 5.0) * 5.0, -180.0, -10.0)),
+            step=5.0,
+            key=f"peak_{key_sfx}",
         )
 
     ts_df, eval_res = load_mission_cube_and_ml(
         n_sites_per_regime=n_sites_per_regime,
         n_epochs=n_epochs,
         band_name=band_name,
-        seed=int(seed),
+        seed=(int(seed) + profile.seed_offset) % 1_000_000,
         base_lat=float(base_lat),
         base_lon=float(base_lon),
+        deformation_scale=profile.deformation_scale,
     )
     enriched_df = eval_res.enriched_site_df
+    mean_ml_risk = float(enriched_df["combined_risk_score"].mean())
 
     # Top KPI Telemetry Row
     col1, col2, col3, col4, col5 = st.columns(5)
@@ -142,6 +195,25 @@ def render_dashboard() -> None:
     ])
 
     with tab_map:
+        st.subheader("Point Selection: click anywhere on the globe")
+        if st_folium is None:
+            st.warning("Install `streamlit-folium` to enable click-to-select; use the sidebar coordinates meanwhile.")
+        else:
+            fmap = folium.Map(location=[base_lat, base_lon], zoom_start=5, tiles="CartoDB dark_matter")
+            folium.Marker([base_lat, base_lon], tooltip=f"{base_lat:.4f}, {base_lon:.4f}").add_to(fmap)
+            map_state = st_folium(fmap, height=320, use_container_width=True, returned_objects=["last_clicked"])
+            clicked = (map_state or {}).get("last_clicked")
+            if clicked and st.session_state.get("last_click") != (clicked["lat"], clicked["lng"]):
+                st.session_state.last_click = (clicked["lat"], clicked["lng"])
+                _set_point(clicked["lat"], clicked["lng"])
+                st.rerun()
+
+        p1, p2, p3, p4 = st.columns(4)
+        p1.metric("Nearest Feature", profile.nearest_feature, f"{profile.nearest_km:.0f} km")
+        p2.metric("Displacement Rate", f"{-profile.rate_mm_yr:.1f} mm/yr", profile.nearest_kind)
+        p3.metric("Terrain (synthetic DEM)", f"{profile.elevation_m:.0f} m", f"slope {profile.slope_deg:.1f} deg")
+        p4.metric("Subsidence Risk", profile.risk_class, f"ML mean risk {mean_ml_risk:.1f}/100")
+
         left_col, right_col = st.columns([1.15, 1.0])
 
         with left_col:
@@ -201,11 +273,12 @@ def render_dashboard() -> None:
 
         with right_col:
             st.subheader(f"2D InSAR Wrapped Phase Fringe Simulator ({band_name})")
-            grid_data = generate_2d_interferogram_grid(
-                grid_size=110,
-                peak_subsidence_mm=peak_deform_mm,
-                wavelength_m=band_spec.wavelength_m,
-                seed=int(seed),
+            grid_data = cached_interferogram(
+                float(peak_deform_mm),
+                band_spec.wavelength_m,
+                (int(seed) + profile.seed_offset) % 1_000_000,
+                profile.bowl_angle_deg,
+                profile.fault_creep,
             )
 
             fig_insar = make_subplots(
@@ -429,6 +502,39 @@ def render_dashboard() -> None:
             .head(25)
         )
         st.dataframe(top_hazards.to_pandas(), use_container_width=True)
+
+        report_extra = {
+            "band": band_name,
+            "peak_deform_mm_input": float(peak_deform_mm),
+            "ml_mean_risk_score": mean_ml_risk,
+            "ml_accuracy": float(eval_res.accuracy),
+        }
+        pt_col1, pt_col2 = st.columns(2)
+        pt_col1.download_button(
+            "Export Point Report (GeoJSON)",
+            data=build_geojson(profile, report_extra),
+            file_name=f"sar_motionlens_{base_lat:.3f}_{base_lon:.3f}.geojson",
+            mime="application/geo+json",
+        )
+        pt_col2.download_button(
+            "Export Point Report (PDF)",
+            data=build_pdf_report(
+                "SAR-MotionLens Point Report",
+                [
+                    f"Location: {base_lat:.4f}, {base_lon:.4f}",
+                    f"Sensor band: {band_name}",
+                    f"Nearest feature: {profile.nearest_feature} ({profile.nearest_km:.0f} km)",
+                    f"Displacement rate: {-profile.rate_mm_yr:.1f} mm/yr (LOS, simulated)",
+                    f"Peak deformation bowl: {peak_deform_mm:.0f} mm",
+                    f"Terrain (synthetic DEM): {profile.elevation_m:.0f} m, slope {profile.slope_deg:.1f} deg",
+                    f"Subsidence risk class: {profile.risk_class}",
+                    f"ML mean combined risk: {mean_ml_risk:.1f}/100",
+                    "Note: values are simulated for demonstration, not measured InSAR products.",
+                ],
+            ),
+            file_name=f"sar_motionlens_{base_lat:.3f}_{base_lon:.3f}.pdf",
+            mime="application/pdf",
+        )
 
         exp_col1, exp_col2 = st.columns(2)
         with exp_col1:

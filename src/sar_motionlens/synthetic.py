@@ -35,6 +35,7 @@ def generate_sar_spatiotemporal_cube(
     seed: int = 42,
     base_lat: float = 35.68,
     base_lon: float = 51.42,
+    deformation_scale: float = 1.0,
 ) -> tuple[pl.DataFrame, pl.DataFrame]:
     """Generate both a full multi-epoch time-series Polars DataFrame and a site-level feature summary DataFrame."""
     rng = np.random.default_rng(seed)
@@ -106,6 +107,8 @@ def generate_sar_spatiotemporal_cube(
                 cross_season_db = rng.uniform(4.0, 7.0)
                 base_coh = rng.uniform(0.48, 0.72) + coherence_band_boost
 
+            vel_mm_yr *= deformation_scale
+            seasonal_amp_mm *= deformation_scale
             phase_shift = rng.uniform(0, 2.0 * np.pi)
             disp_los_mm = (
                 vel_mm_yr * t_yr
@@ -238,17 +241,24 @@ def generate_2d_interferogram_grid(
     time_years: float = 1.0,
     noise_level: float = 0.15,
     seed: int = 42,
+    bowl_angle_deg: float = 0.0,
+    fault_creep: bool = False,
 ) -> dict[str, np.ndarray]:
     """Simulate a 2D spatial SAR deformation bowl, wrapped interferometric fringes, and coherence map."""
     rng = np.random.default_rng(seed)
     x = np.linspace(-3.0, 3.0, grid_size)
     y = np.linspace(-3.0, 3.0, grid_size)
     xx, yy = np.meshgrid(x, y)
+    theta = np.radians(bowl_angle_deg)
+    xx, yy = xx * np.cos(theta) + yy * np.sin(theta), -xx * np.sin(theta) + yy * np.cos(theta)
 
     # Double-lobed deformation bowl (e.g., subsiding aquifer + secondary fault creep)
     bowl_1 = np.exp(-((xx + 0.55) ** 2 + (yy - 0.35) ** 2) / 1.35)
     bowl_2 = 0.55 * np.exp(-((xx - 0.85) ** 2 + (yy + 0.65) ** 2) / 0.85)
     disp_mm = peak_subsidence_mm * time_years * (bowl_1 + bowl_2)
+    if fault_creep:
+        # Right-lateral creep: smooth step in LOS across the fault trace (x' = 0).
+        disp_mm = disp_mm + 0.5 * peak_subsidence_mm * time_years * np.arctan(xx / 0.15) / (np.pi / 2)
 
     wrapped_clean = displacement_mm_to_wrapped_phase(disp_mm, wavelength_m=wavelength_m)
     phase_noise = rng.normal(0.0, noise_level * np.pi, size=(grid_size, grid_size))
