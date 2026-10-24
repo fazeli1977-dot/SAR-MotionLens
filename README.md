@@ -11,7 +11,7 @@
 [![Streamlit](https://img.shields.io/badge/Streamlit-Dashboard-FC3D21?style=for-the-badge&logo=streamlit&logoColor=white)](https://streamlit.io/)
 [![LightGBM](https://img.shields.io/badge/LightGBM-Classifier-2E7D32?style=for-the-badge)](https://lightgbm.readthedocs.io/)
 
-[**Run Locally**](#run-the-app) | [**Deploy on Streamlit Cloud**](https://share.streamlit.io/deploy?repository=fazeli1977-dot/SAR-MotionLens&branch=main&mainModule=app/streamlit_app.py) | [**Developer**](#developer)
+[**Live App**](https://sar-motionlens.streamlit.app/) | [**Run Locally**](#run-the-app) | [**Developer**](#developer)
 
 </div>
 
